@@ -1,0 +1,22 @@
+{
+  "name": "tool-tiny-images",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@jsquash/jpeg": "^1.6.0",
+    "@jsquash/oxipng": "^2.3.0",
+    "@upstash/redis": "^1.38.4",
+    "imagequant": "^0.1.2",
+    "jszip": "^3.10.1",
+    "vite-plugin-wasm": "^3.6.0"
+  },
+  "devDependencies": {
+    "vite": "^7.0.0"
+  }
+}

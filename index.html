@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Batch Image Compressor</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="header-icon">
+      <svg width="22" height="22" viewBox="7.5 7.5 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M18.0098 7.99988C20.1798 7.99988 22 9.82011 22 11.9901V18.0096C22 20.1796 20.2498 21.9999 18.0098 21.9999H11.9902C9.82023 21.9999 8 20.2496 8 18.0096V11.9901C8 9.82011 9.82023 7.99988 11.9902 7.99988H18.0098ZM20.0693 15.2411C19.5866 14.879 18.9824 14.7582 18.3789 15.4823C17.7755 16.2064 16.9311 17.3827 16.207 18.0096C15.4832 18.6363 14.0356 17.6461 13.6729 17.4091C13.3109 17.1726 12.9704 17.1992 12.6904 17.4091L9.95996 20.0399C10.45 20.5299 11.2202 20.8798 11.9902 20.8798H18.0098C19.5498 20.8798 21.0898 19.6196 21.0898 18.0096V16.1903C21.0898 16.1903 20.5521 15.6032 20.0693 15.2411ZM11.8496 9.12C10.3098 9.12022 9.1198 10.4502 9.0498 11.9901V18.0096C9.0498 18.1496 9.05043 18.7798 9.19043 19.1298L11.8496 16.5692C12.6196 15.9392 13.3804 15.9654 14.1553 16.4481C14.3808 16.5886 15.3409 17.3142 15.7246 16.9305C16.1084 16.5465 16.8149 15.4488 17.6553 14.4403C18.4961 13.4313 19.7071 13.19 20.9502 14.4403V11.9901C20.9502 10.4501 19.4801 9.12006 17.8701 9.12H11.8496ZM12.6201 10.87C13.6001 10.87 14.3701 11.64 14.3701 12.62C14.3701 13.5999 13.6001 14.37 12.6201 14.37C11.6401 14.37 10.8701 13.6 10.8701 12.62C10.8701 11.64 11.6401 10.87 12.6201 10.87ZM12.6201 11.8495C12.2001 11.8495 11.8496 12.2 11.8496 12.62C11.8496 13.04 12.2001 13.3895 12.6201 13.3895C13.0401 13.3895 13.3896 13.0399 13.3896 12.62C13.3896 12.2 13.0401 11.8495 12.6201 11.8495Z" fill="currentColor"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1>Batch Image Compressor</h1>
+      <p>Supports JPG / PNG with no limit on the number of images. Everything runs in your browser — nothing is uploaded to any server.</p>
+    </div>
+  </header>
+
+  <div class="panel">
+    <div id="dropzone" class="dropzone">
+      <img class="icon" src="/dropzone-icon.svg" alt="" width="60" height="60">
+      <div class="title">Drag images here, or click to choose files</div>
+      <div class="hint">Supports .jpg / .jpeg / .png — select multiple files at once</div>
+      <input type="file" id="fileInput" accept="image/jpeg,image/png" multiple>
+    </div>
+  </div>
+
+  <div class="summary" id="summary" style="display:none;">
+    <div class="stat"><div class="label">Images</div><div class="value" id="statCount">0</div></div>
+    <div class="stat"><div class="label">Original Size</div><div class="value" id="statOriginal">0 KB</div></div>
+    <div class="stat"><div class="label">Compressed Size</div><div class="value" id="statCompressed">0 KB</div></div>
+    <div class="stat"><div class="label">Saved</div><div class="value good" id="statSaved">0%</div></div>
+  </div>
+
+  <div class="panel">
+    <div class="controls">
+      <div class="control-group">
+        <label>Image Quality <b id="qualityLabel">70</b></label>
+        <input type="range" id="qualitySlider" min="1" max="100" value="70">
+        <div class="estimate">Lower values compress more and shrink file size; <b>60–75</b> is recommended, typically reducing size by 50–70%.</div>
+      </div>
+      <div class="actions-row" style="margin-top:0;">
+        <button class="btn btn-primary" id="compressBtn" disabled>Compress</button>
+        <button class="btn btn-ghost" id="downloadAllBtn" disabled>Download All (ZIP)</button>
+        <button class="btn btn-danger" id="clearBtn" disabled>Clear All</button>
+      </div>
+    </div>
+    <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  </div>
+
+  <div class="panel">
+    <div class="grid" id="grid">
+      <div class="empty" id="emptyState">No images added yet</div>
+    </div>
+  </div>
+
+  <footer>純前端處理・JPEG 採用 MozJPEG (WASM)・PNG 採用 libimagequant (WASM) 色彩量化 + OxiPNG (WASM) 二次無損壓縮<br>All processing runs client-side・JPEG via MozJPEG (WASM)・PNG via libimagequant (WASM) color quantization + OxiPNG (WASM) lossless re-compression</footer>
+
+  <div class="build-info">
+    <span id="usageCounter"></span>
+    <span class="dot">·</span>
+    <a href="/dashboard.html">Analytics</a>
+    <span class="dot">·</span>
+    <span>v1.1.0</span>
+    <span class="dot">·</span>
+    <span>2026-09-10</span>
+  </div>
+</div>
+
+<button id="backToTop" class="back-to-top" aria-label="Back to top" title="Back to top">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="m5 12 7-7 7 7"/>
+    <path d="M12 19V5"/>
+  </svg>
+</button>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>

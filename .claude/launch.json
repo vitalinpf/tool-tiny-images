@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "8934", "--strictPort"],
+      "port": 8934
+    },
+    {
+      "name": "preview-build",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview", "--", "--port", "8935", "--strictPort"],
+      "port": 8935
+    }
+  ]
+}
