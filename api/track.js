@@ -18,6 +18,8 @@ function qualityBucket(q) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
+
+  let ops = [];
   try {
     const {
       type,
@@ -32,7 +34,6 @@ export default async function handler(req, res) {
     } = req.body || {};
 
     const today = new Date().toISOString().slice(0, 10);
-    const ops = [];
 
     if (type === 'compress_complete' && count > 0) {
       ops.push(redis.incrby(`${PREFIX}:total_images`, count));
@@ -66,7 +67,30 @@ export default async function handler(req, res) {
       ops.push(redis.hincrby(`${PREFIX}:errors`, String(error).slice(0, 80), 1));
     }
 
-    await Promise.all(ops);
-  } catch {}
-  res.status(200).json({ ok: true });
+  } catch (e) {
+    // The payload was malformed enough that we could not even build the writes.
+    // Any commands already issued are in flight; swallow their results so they
+    // cannot surface as unhandled rejections after we have responded.
+    ops.forEach((p) => Promise.resolve(p).catch(() => {}));
+    console.error('track: bad request payload:', e);
+    return res.status(400).json({ ok: false, error: 'bad_payload' });
+  }
+
+  // allSettled rather than all: one failing counter should not discard the
+  // rest, and we want to know exactly which writes were lost.
+  const results = await Promise.allSettled(ops);
+  const failed = results.filter((r) => r.status === 'rejected');
+
+  if (failed.length) {
+    console.error(
+      `track: ${failed.length}/${results.length} Redis writes failed;` +
+      ` first error: ${failed[0].reason?.message || failed[0].reason}`
+    );
+    // The client sends these fire-and-forget and ignores the response, but a
+    // non-2xx keeps the failure visible in logs and uptime checks instead of
+    // silently losing analytics.
+    return res.status(500).json({ ok: false, error: 'write_failed', failed: failed.length });
+  }
+
+  res.status(200).json({ ok: true, writes: results.length });
 }
