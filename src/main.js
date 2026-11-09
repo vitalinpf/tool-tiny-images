@@ -7,7 +7,8 @@ import { track } from './analytics.js';
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
 const grid = document.getElementById('grid');
-const emptyState = document.getElementById('emptyState');
+const resultsPanel = document.getElementById('resultsPanel');
+const undoBar = document.getElementById('undoBar');
 const qualitySlider = document.getElementById('qualitySlider');
 const qualityLabel = document.getElementById('qualityLabel');
 const compressBtn = document.getElementById('compressBtn');
@@ -173,15 +174,20 @@ async function handleFiles(fileList) {
   updateEmptyState();
 }
 
-function addItem(file) {
+// `restore` carries a snapshot taken before a removal, so undo brings the card
+// back finished rather than making the user compress it again.
+function addItem(file, restore) {
   const id = 'img_' + (idSeq++);
   const url = URL.createObjectURL(file);
   const item = {
     id, file, originalUrl: url, originalSize: file.size,
     status: 'pending', compressedBlob: null, compressedSize: 0,
     // Which slider value produced compressedBlob; null until compressed.
-    compressedQuality: null
+    compressedQuality: null,
+    ...(restore || {})
   };
+  item.id = id;
+  item.originalUrl = url;
   items.push(item);
 
   const card = document.createElement('div');
@@ -207,25 +213,91 @@ function addItem(file) {
 
   card.querySelector('.rm').addEventListener('click', () => removeItem(id));
   card.querySelector('.dl').addEventListener('click', () => downloadItem(id));
+
+  if (item.status === 'done') renderResult(item);
+  return item;
+}
+
+// Paints a finished item's figures onto its card. compressOne() and undo both
+// need this, so it lives in one place.
+function renderResult(item) {
+  const card = item.cardEl;
+  const savedPct = (1 - item.compressedSize / item.originalSize) * 100;
+  card.querySelector('.result').innerHTML =
+    `\u2192 ${fmtBytes(item.compressedSize)} <span class="save ${savedPct < 20 ? 'low' : ''}">(-${savedPct.toFixed(0)}%)</span>`;
+  const statusEl = card.querySelector('.status');
+  statusEl.textContent = 'Done';
+  statusEl.className = 'status done';
+  card.querySelector('.dl').disabled = false;
 }
 
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+let undoTimer = null;
+
+function snapshotOf(item) {
+  return {
+    file: item.file,
+    status: item.status,
+    compressedBlob: item.compressedBlob,
+    compressedSize: item.compressedSize,
+    compressedQuality: item.compressedQuality
+  };
+}
+
+function hideUndo() {
+  clearTimeout(undoTimer);
+  undoBar.classList.remove('show');
+  undoBar.innerHTML = '';
+}
+
+// Undo rather than a confirmation dialog: removing is cheap and frequent, and
+// a prompt in front of every removal costs more than the mistake it prevents.
+function offerUndo(snapshots, label) {
+  if (!undoBar || !snapshots.length) return;
+  clearTimeout(undoTimer);
+  undoBar.innerHTML = `<span>${escapeHtml(label)}</span>`;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'undo-btn';
+  btn.textContent = 'Undo';
+  btn.addEventListener('click', () => {
+    hideUndo();
+    snapshots.forEach(sn => addItem(sn.file, {
+      status: sn.status,
+      compressedBlob: sn.compressedBlob,
+      compressedSize: sn.compressedSize,
+      compressedQuality: sn.compressedQuality
+    }));
+    updateButtons();
+    updateEmptyState();
+    updateSummary();
+  });
+  undoBar.appendChild(btn);
+  undoBar.classList.add('show');
+  undoTimer = setTimeout(hideUndo, 8000);
+}
+
 function removeItem(id) {
   const idx = items.findIndex(i => i.id === id);
   if (idx === -1) return;
+  const snapshot = snapshotOf(items[idx]);
+  const name = items[idx].file.name;
   URL.revokeObjectURL(items[idx].originalUrl);
   items[idx].cardEl.remove();
   items.splice(idx, 1);
   if (items.length === 0) clearSkipped();
+  offerUndo([snapshot], `Removed ${name}`);
   updateButtons();
   updateEmptyState();
   updateSummary();
 }
 
 clearBtn.addEventListener('click', () => {
+  const snapshots = items.map(snapshotOf);
+  const count = items.length;
   items.forEach(i => URL.revokeObjectURL(i.originalUrl));
   items = [];
   grid.innerHTML = '';
@@ -234,15 +306,13 @@ clearBtn.addEventListener('click', () => {
   updateButtons();
   updateEmptyState();
   summary.style.display = 'none';
+  offerUndo(snapshots, `Cleared ${count} image${count === 1 ? '' : 's'}`);
 });
 
+// The dropzone above is already the empty state; a second card saying the list
+// is empty added nothing, so the whole results panel goes away instead.
 function updateEmptyState() {
-  if (items.length === 0) {
-    if (!grid.contains(emptyState)) grid.appendChild(emptyState);
-    emptyState.style.display = 'block';
-  } else if (grid.contains(emptyState)) {
-    emptyState.remove();
-  }
+  resultsPanel.style.display = items.length === 0 ? 'none' : '';
 }
 
 // An item needs work if it was never compressed, or was compressed at a
@@ -373,12 +443,7 @@ async function compressOne(item, quality) {
     item.compressedQuality = quality;
     item.status = 'done';
 
-    const savedPct = ((1 - blob.size / item.originalSize) * 100);
-    const resultEl = card.querySelector('.result');
-    resultEl.innerHTML = `→ ${fmtBytes(blob.size)} <span class="save ${savedPct < 20 ? 'low' : ''}">(-${savedPct.toFixed(0)}%)</span>`;
-    statusEl.textContent = 'Done';
-    statusEl.className = 'status done';
-    card.querySelector('.dl').disabled = false;
+    renderResult(item);
   } catch (err) {
     console.error(err);
     item.status = 'error';
@@ -483,5 +548,9 @@ function updateBackToTop() {
   backToTop.classList.toggle('visible', window.scrollY > 400);
 }
 window.addEventListener('scroll', updateBackToTop, { passive: true });
-backToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+backToTop.addEventListener('click', () => window.scrollTo({
+  top: 0,
+  behavior: reducedMotion.matches ? 'auto' : 'smooth'
+}));
 updateBackToTop();

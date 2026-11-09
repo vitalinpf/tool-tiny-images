@@ -13,6 +13,11 @@
   --bad:#b91c1c;
   --bad-bg:#fef2f2;
   --bad-border:#fecaca;
+  --bad-bg-hover:#fee2e2;
+  --drag-bg:#eaf9ff;
+  --checker:var(--checker);
+  --on-accent:#fff;
+  --thumb-ring:#fff;
   --radius:12px;
 }
 *{box-sizing:border-box;}
@@ -31,7 +36,7 @@ header{display:flex;align-items:flex-start;gap:14px;margin-bottom:28px;}
   width:44px;height:44px;
   display:grid;place-items:center;
   border-radius:8px;
-  background:var(--accent);color:#fff;
+  background:var(--accent);color:var(--on-accent);
   box-shadow:0 16px 50px rgba(15,23,42,.1);
 }
 header h1{
@@ -59,7 +64,7 @@ header p{margin:0;color:var(--text-dim);font-size:14px;line-height:1.6;}
   transition:border-color .15s, background .15s;
   background:var(--panel-2);
 }
-.dropzone.drag{border-color:var(--accent);background:#eaf9ff;}
+.dropzone.drag{border-color:var(--accent);background:var(--drag-bg);}
 .dropzone .icon{width:60px;height:60px;margin-bottom:8px;}
 .dropzone .title{font-size:15px;font-weight:600;margin-bottom:4px;}
 .dropzone .hint{font-size:13px;color:var(--text-dim);}
@@ -73,21 +78,24 @@ input[type=file]{display:none;}
   display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim);margin-bottom:8px;
 }
 .control-group label b{color:var(--text);font-weight:600;}
+/* The input is 44px tall so the pointer target meets WCAG 2.5.5, while the
+   visible track stays 4px: the height is padding you can grab, not decoration. */
 input[type=range]{
   -webkit-appearance:none;appearance:none;
-  width:100%;height:4px;border-radius:4px;
-  background:linear-gradient(to right,
-    var(--accent) 0%, var(--accent) var(--range-progress, 70%),
-    var(--border-strong) var(--range-progress, 70%), var(--border-strong) 100%);
+  display:block;width:100%;height:44px;margin:-14px 0;
+  background:transparent;
   cursor:pointer;outline:none;
 }
 input[type=range]::-webkit-slider-runnable-track{
-  -webkit-appearance:none;height:4px;background:transparent;
+  -webkit-appearance:none;height:4px;border-radius:4px;
+  background:linear-gradient(to right,
+    var(--accent) 0%, var(--accent) var(--range-progress, 70%),
+    var(--border-strong) var(--range-progress, 70%), var(--border-strong) 100%);
 }
 input[type=range]::-webkit-slider-thumb{
   -webkit-appearance:none;
-  width:16px;height:16px;margin-top:-6px;border-radius:50%;
-  background:var(--accent);border:2px solid #fff;
+  width:20px;height:20px;margin-top:-8px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--thumb-ring);
   box-shadow:0 1px 3px rgba(15,23,42,.35);
   cursor:pointer;
 }
@@ -98,8 +106,8 @@ input[type=range]::-moz-range-progress{
   height:4px;border-radius:4px;background:var(--accent);
 }
 input[type=range]::-moz-range-thumb{
-  width:16px;height:16px;border-radius:50%;
-  background:var(--accent);border:2px solid #fff;
+  width:20px;height:20px;border-radius:50%;
+  background:var(--accent);border:2px solid var(--thumb-ring);
   box-shadow:0 1px 3px rgba(15,23,42,.35);
   cursor:pointer;
 }
@@ -109,16 +117,17 @@ input[type=range]:disabled{opacity:.5;cursor:not-allowed;}
 
 .btn{
   appearance:none;border:1px solid transparent;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:650;
+  min-height:44px;
   cursor:pointer;transition:background .16s, border-color .16s, color .16s;
 }
 .btn:active{transform:scale(.98);}
 .btn:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(1);}
-.btn-primary{background:var(--accent-strong);color:#fff;}
+.btn-primary{background:var(--accent-strong);color:var(--on-accent);}
 .btn-primary:hover:not(:disabled){background:var(--accent-strong-hover);}
-.btn-ghost{background:#fff;border-color:var(--border-strong);color:var(--text-dim);}
+.btn-ghost{background:var(--panel);border-color:var(--border-strong);color:var(--text-dim);}
 .btn-ghost:hover:not(:disabled){background:var(--panel-2);}
 .btn-danger{background:var(--bad-bg);border-color:var(--bad-border);color:var(--bad);}
-.btn-danger:hover:not(:disabled){background:#fee2e2;}
+.btn-danger:hover:not(:disabled){background:var(--bad-bg-hover);}
 
 .actions-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
 .actions-row .btn{min-width:100px;}
@@ -155,7 +164,7 @@ input[type=range]:disabled{opacity:.5;cursor:not-allowed;}
   border:1px solid var(--border);
 }
 .thumb.checker{
-  background-image:linear-gradient(45deg,#e3e6ec 25%,transparent 25%),linear-gradient(-45deg,#e3e6ec 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e3e6ec 75%),linear-gradient(-45deg,transparent 75%,#e3e6ec 75%);
+  background-image:linear-gradient(45deg,var(--checker) 25%,transparent 25%),linear-gradient(-45deg,var(--checker) 25%,transparent 25%),linear-gradient(45deg,transparent 75%,var(--checker) 75%),linear-gradient(-45deg,transparent 75%,var(--checker) 75%);
   background-size:10px 10px;background-position:0 0,0 5px,5px -5px,-5px 0px;
 }
 .info{flex:1;min-width:0;}
@@ -166,13 +175,17 @@ input[type=range]:disabled{opacity:.5;cursor:not-allowed;}
 .status{font-size:11px;padding:3px 8px;border-radius:20px;background:var(--panel-2);color:var(--text-dim);white-space:nowrap;}
 .status.done{color:var(--good);}
 .status.err{color:var(--bad);}
-.row-actions{display:flex;gap:6px;flex-shrink:0;}
+.row-actions{display:flex;gap:12px;flex-shrink:0;}
 .icon-btn{
-  background:#fff;border:1px solid var(--border-strong);color:var(--text-dim);
+  position:relative;
+  background:var(--panel);border:1px solid var(--border-strong);color:var(--text-dim);
   border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;
   cursor:pointer;font-size:14px;
 }
 .icon-btn:hover{color:var(--text);background:var(--panel-2);}
+/* Keeps the 32px look but gives the finger a 44x44 target. The 12px gap above
+   means two neighbours touch without overlapping, so taps stay unambiguous. */
+.icon-btn::after{content:"";position:absolute;inset:-6px;}
 
 .empty{
   text-align:center;color:var(--text-dim);font-size:13px;padding:30px 0;
@@ -191,7 +204,7 @@ footer{text-align:center;color:var(--text-dim);font-size:12px;margin-top:30px;li
   position:fixed;right:24px;bottom:24px;
   width:48px;height:48px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  background:var(--accent-strong);color:#fff;border:none;cursor:pointer;
+  background:var(--accent-strong);color:var(--on-accent);border:none;cursor:pointer;
   box-shadow:0 16px 50px rgba(15,23,42,.18);
   opacity:0;visibility:hidden;transform:translateY(8px);
   transition:opacity .2s, transform .2s, visibility .2s, background .16s;
@@ -226,3 +239,68 @@ input[type="range"]:focus-visible{
 }
 .notice.show{display:block;}
 .notice .files{color:var(--text-dim);word-break:break-all;}
+
+/* --- Dark mode (S2-5) --------------------------------------------------
+   Token overrides only; every rule above reads from these. Each pairing was
+   measured against WCAG AA rather than eyeballed — the dimmest is --text-dim
+   on --panel-2 at 7.1:1. --accent-strong is unchanged: its job is contrast
+   with white text (4.56:1), which does not depend on the page behind it. */
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0b1220;
+    --panel:#121a2a;
+    --panel-2:#1b2537;
+    --border:#263146;
+    --border-strong:#3a4762;
+    --text:#e6edf7;
+    --text-dim:#a3b2c8;
+    --good:#34d399;
+    --bad:#fca5a5;
+    --bad-bg:#2a1416;
+    --bad-border:#5b2326;
+    --bad-bg-hover:#3a1b1e;
+    --drag-bg:#10293a;
+    --checker:#232c3d;
+    --thumb-ring:#121a2a;
+  }
+  /* The light build leans on large soft shadows for depth; on a dark surface
+     they read as grime, so they go and the borders carry the separation. */
+  .panel, .card, .summary .stat, .back-to-top, .header-icon{
+    box-shadow:none;
+  }
+}
+
+/* --- Reduced motion (S2-5) ---------------------------------------------
+   Honour the OS setting rather than animating regardless. The back-to-top
+   button's scroll is handled in main.js, which reads the same query. */
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.01ms !important;
+    scroll-behavior:auto !important;
+  }
+}
+
+/* --- Undo bar (S2-2) ---------------------------------------------------
+   Neutral variant of .notice: a removal is not an error. */
+.notice.neutral{
+  background:var(--panel-2);
+  border-color:var(--border-strong);
+  color:var(--text-dim);
+  display:none;
+  align-items:center;
+  gap:12px;
+  justify-content:space-between;
+}
+.notice.neutral.show{display:flex;}
+.notice.neutral .undo-btn{
+  flex-shrink:0;
+  appearance:none;background:none;border:none;
+  color:var(--accent-strong-hover);
+  font:inherit;font-weight:700;
+  cursor:pointer;padding:6px 8px;margin:-6px -8px;
+  min-height:32px;
+  text-decoration:underline;
+}
+.notice.neutral .undo-btn:hover{color:var(--text);}

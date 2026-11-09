@@ -55,13 +55,13 @@
     <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
   </div>
 
-  <div class="panel">
-    <div class="grid" id="grid">
-      <div class="empty" id="emptyState">No images added yet</div>
-    </div>
+  <p id="undoBar" class="notice neutral" role="status" aria-live="polite"></p>
+
+  <div class="panel" id="resultsPanel" style="display:none;">
+    <div class="grid" id="grid"></div>
   </div>
 
-  <footer>純前端處理・JPEG 採用 MozJPEG (WASM)・PNG 採用 libimagequant (WASM) 色彩量化 + OxiPNG (WASM) 二次無損壓縮<br>All processing runs client-side・JPEG via MozJPEG (WASM)・PNG via libimagequant (WASM) color quantization + OxiPNG (WASM) lossless re-compression</footer>
+  <footer>Everything runs in your browser — no uploads, no account, no server.</footer>
 
   <div class="build-info">
     <span>v1.1.0</span>
