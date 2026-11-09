@@ -24,21 +24,6 @@ const statSaved = document.getElementById('statSaved');
 let items = []; // {id, file, originalUrl, originalSize, status, compressedBlob, compressedSize, cardEl}
 let idSeq = 0;
 
-// Global counter, shared across everyone — served from Redis via /api/stats.
-const usageCounterEl = document.getElementById('usageCounter');
-async function renderUsageCount() {
-  if (!usageCounterEl) return;
-  try {
-    const res = await fetch('/api/stats', { signal: AbortSignal.timeout(5000) });
-    const data = await res.json();
-    const total = Number(data.totalImages) || 0;
-    usageCounterEl.textContent = `${total.toLocaleString()} image${total === 1 ? '' : 's'} compressed`;
-  } catch {
-    usageCounterEl.textContent = '';
-  }
-}
-renderUsageCount();
-
 function fmtBytes(n) {
   if (n < 1024) return n + ' B';
   if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
@@ -311,8 +296,6 @@ compressBtn.addEventListener('click', async () => {
       formats,
       quality,
     });
-    // give the write a moment to land, then refresh the global counter
-    setTimeout(renderUsageCount, 1200);
   }
 
   compressBtn.disabled = false;
