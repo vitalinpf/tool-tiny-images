@@ -97,7 +97,7 @@ const skippedEl = document.getElementById('skipped');
 // decode anywhere; compressOne() still probes the canvas it actually got, which
 // is what catches the tighter limits on phones.
 const MAX_SIDE = 32767;
-const MAX_PIXELS = 100e6;
+const MAX_PIXELS = 100e6; // also stated in index.html's subtitle — change both
 
 // naturalWidth/Height without touching a canvas.
 function probeSize(file) {
