@@ -22,12 +22,14 @@
   </header>
 
   <div class="panel">
-    <div id="dropzone" class="dropzone">
+    <div id="dropzone" class="dropzone" role="button" tabindex="0"
+         aria-label="Add images: drag them here, or activate to choose files">
       <img class="icon" src="/dropzone-icon.svg" alt="" width="60" height="60">
       <div class="title">Drag images here, or click to choose files</div>
       <div class="hint">Supports .jpg / .jpeg / .png — select multiple files at once</div>
       <input type="file" id="fileInput" accept="image/jpeg,image/png" multiple>
     </div>
+    <p id="skipped" class="notice" role="status" aria-live="polite"></p>
   </div>
 
   <div class="summary" id="summary" style="display:none;">

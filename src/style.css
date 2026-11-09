@@ -6,8 +6,9 @@
   --border-strong:#cbd5e1;
   --text:#020617;
   --text-dim:#475569;
-  --accent:#49c6ef;
-  --accent-hover:#1ba7d1;
+  --accent:#49c6ef;            /* decorative fills only — 1.98:1 on white */
+  --accent-strong:#0e7fa6;     /* 4.56:1 with white text — use wherever text sits on it */
+  --accent-strong-hover:#0b6684;
   --good:#059669;
   --bad:#b91c1c;
   --bad-bg:#fef2f2;
@@ -30,7 +31,7 @@ header{display:flex;align-items:flex-start;gap:14px;margin-bottom:28px;}
   width:44px;height:44px;
   display:grid;place-items:center;
   border-radius:8px;
-  background:var(--accent);color:#fff;
+  background:var(--accent-strong);color:#fff;
   box-shadow:0 16px 50px rgba(15,23,42,.1);
 }
 header h1{
@@ -111,9 +112,9 @@ input[type=range]:disabled{opacity:.5;cursor:not-allowed;}
   cursor:pointer;transition:background .16s, border-color .16s, color .16s;
 }
 .btn:active{transform:scale(.98);}
-.btn:disabled{opacity:.5;cursor:not-allowed;}
-.btn-primary{background:var(--accent);color:#fff;}
-.btn-primary:hover:not(:disabled){background:var(--accent-hover);}
+.btn:disabled{opacity:.55;cursor:not-allowed;filter:grayscale(1);}
+.btn-primary{background:var(--accent-strong);color:#fff;}
+.btn-primary:hover:not(:disabled){background:var(--accent-strong-hover);}
 .btn-ghost{background:#fff;border-color:var(--border-strong);color:var(--text-dim);}
 .btn-ghost:hover:not(:disabled){background:var(--panel-2);}
 .btn-danger{background:var(--bad-bg);border-color:var(--bad-border);color:var(--bad);}
@@ -190,11 +191,38 @@ footer{text-align:center;color:var(--text-dim);font-size:12px;margin-top:30px;li
   position:fixed;right:24px;bottom:24px;
   width:48px;height:48px;border-radius:50%;
   display:flex;align-items:center;justify-content:center;
-  background:var(--accent);color:#fff;border:none;cursor:pointer;
+  background:var(--accent-strong);color:#fff;border:none;cursor:pointer;
   box-shadow:0 16px 50px rgba(15,23,42,.18);
   opacity:0;visibility:hidden;transform:translateY(8px);
   transition:opacity .2s, transform .2s, visibility .2s, background .16s;
   z-index:50;
 }
 .back-to-top.visible{opacity:1;visibility:visible;transform:translateY(0);}
-.back-to-top:hover{background:var(--accent-hover);}
+.back-to-top:hover{background:var(--accent-strong-hover);}
+
+/* --- Keyboard focus (S4-1) ---------------------------------------------
+   The stylesheet previously defined no :focus rules at all, and the range
+   input cleared its outline, so keyboard users had no visible focus. */
+.dropzone:focus-visible,
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.back-to-top:focus-visible,
+input[type="range"]:focus-visible{
+  outline:3px solid var(--accent-strong);
+  outline-offset:2px;
+}
+
+/* --- Skipped-file notice (S3-3) --------------------------------------- */
+.notice{
+  display:none;
+  margin:12px 0 0;
+  padding:10px 12px;
+  border-radius:8px;
+  background:var(--bad-bg);
+  border:1px solid var(--bad-border);
+  color:var(--bad);
+  font-size:13px;
+  line-height:1.5;
+}
+.notice.show{display:block;}
+.notice .files{color:var(--text-dim);word-break:break-all;}

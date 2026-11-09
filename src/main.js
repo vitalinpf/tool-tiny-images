@@ -23,6 +23,9 @@ const statSaved = document.getElementById('statSaved');
 
 let items = []; // {id, file, originalUrl, originalSize, status, compressedBlob, compressedSize, cardEl}
 let idSeq = 0;
+// updateButtons() runs after every finished item, so it has to know a run is
+// still going — otherwise it re-enables Compress mid-batch.
+let isCompressing = false;
 
 function fmtBytes(n) {
   if (n < 1024) return n + ' B';
@@ -57,10 +60,20 @@ function updateSliderFill() {
 qualitySlider.addEventListener('input', () => {
   qualityLabel.textContent = qualitySlider.value;
   updateSliderFill();
+  updateButtons();
 });
 updateSliderFill();
 
 dropzone.addEventListener('click', () => fileInput.click());
+// The dropzone is a div with role="button", so it has to handle activation
+// keys itself — a native button would do this for free, but it cannot contain
+// the file input. fileInput stays display:none; .click() works regardless.
+dropzone.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+    e.preventDefault();
+    fileInput.click();
+  }
+});
 ['dragenter', 'dragover'].forEach(ev => dropzone.addEventListener(ev, e => {
   e.preventDefault(); dropzone.classList.add('drag');
 }));
@@ -75,8 +88,28 @@ fileInput.addEventListener('change', () => {
   fileInput.value = '';
 });
 
+const skippedEl = document.getElementById('skipped');
+
+function reportSkipped(skipped) {
+  if (!skippedEl) return;
+  if (!skipped.length) {
+    skippedEl.classList.remove('show');
+    skippedEl.textContent = '';
+    return;
+  }
+  const names = skipped.map(f => f.name).join(', ');
+  skippedEl.innerHTML =
+    `${skipped.length} file${skipped.length === 1 ? '' : 's'} skipped — only JPG and PNG are supported.` +
+    `<br><span class="files">${escapeHtml(names)}</span>`;
+  skippedEl.classList.add('show');
+}
+
 function handleFiles(fileList) {
-  const valid = Array.from(fileList).filter(f => /^image\/(jpeg|png)$/.test(f.type));
+  const all = Array.from(fileList);
+  const valid = all.filter(f => /^image\/(jpeg|png)$/.test(f.type));
+  // Silently dropping files left users counting thumbnails to work out what
+  // happened, so say which ones were ignored and why.
+  reportSkipped(all.filter(f => !valid.includes(f)));
   if (!valid.length) return;
   valid.forEach(addItem);
   updateButtons();
@@ -88,7 +121,9 @@ function addItem(file) {
   const url = URL.createObjectURL(file);
   const item = {
     id, file, originalUrl: url, originalSize: file.size,
-    status: 'pending', compressedBlob: null, compressedSize: 0
+    status: 'pending', compressedBlob: null, compressedSize: 0,
+    // Which slider value produced compressedBlob; null until compressed.
+    compressedQuality: null
   };
   items.push(item);
 
@@ -150,13 +185,35 @@ function updateEmptyState() {
   }
 }
 
+// An item needs work if it was never compressed, or was compressed at a
+// quality the slider no longer shows. This is what makes changing the quality
+// and pressing the button actually re-run, instead of silently doing nothing.
+function itemsNeedingWork() {
+  const quality = parseInt(qualitySlider.value, 10);
+  return items.filter(i => i.status !== 'done' || i.compressedQuality !== quality);
+}
+
 function updateButtons() {
   const hasItems = items.length > 0;
-  compressBtn.disabled = !hasItems;
-  compressBtn.textContent = hasItems ? `Compress (${items.length})` : 'Compress';
-  clearBtn.disabled = !hasItems;
-  const hasCompressed = items.some(i => i.status === 'done');
-  downloadAllBtn.disabled = !hasCompressed;
+  const todo = itemsNeedingWork();
+  const allDone = hasItems && todo.length === 0;
+
+  // Never leave the button clickable with nothing to do — pressing it used to
+  // produce no feedback whatsoever.
+  compressBtn.disabled = isCompressing || !hasItems || allDone;
+  if (isCompressing) {
+    compressBtn.textContent = 'Compressing…';
+  } else if (!hasItems) {
+    compressBtn.textContent = 'Compress';
+  } else if (allDone) {
+    compressBtn.textContent = `Compressed (${items.length})`;
+  } else {
+    const redo = items.some(i => i.status === 'done');
+    compressBtn.textContent = `${redo ? 'Re-compress' : 'Compress'} (${todo.length})`;
+  }
+
+  clearBtn.disabled = isCompressing || !hasItems;
+  downloadAllBtn.disabled = isCompressing || !items.some(i => i.status === 'done');
 }
 
 function updateSummary() {
@@ -214,6 +271,11 @@ async function compressOne(item, quality) {
   const statusEl = card.querySelector('.status');
   statusEl.textContent = 'Processing';
   statusEl.className = 'status';
+  // Clear the previous run's figures so a re-compress does not show a stale
+  // result while the new one is still being produced.
+  card.querySelector('.result').innerHTML = '';
+  card.querySelector('.dl').disabled = true;
+  item.status = 'pending';
 
   try {
     const img = await loadImage(item.file);
@@ -235,6 +297,7 @@ async function compressOne(item, quality) {
 
     item.compressedBlob = blob;
     item.compressedSize = blob.size;
+    item.compressedQuality = quality;
     item.status = 'done';
 
     const savedPct = ((1 - blob.size / item.originalSize) * 100);
@@ -254,10 +317,11 @@ async function compressOne(item, quality) {
 
 compressBtn.addEventListener('click', async () => {
   const quality = parseInt(qualitySlider.value, 10);
-  const pending = items.filter(i => i.status !== 'done');
+  const pending = itemsNeedingWork();
   if (pending.length === 0) return;
 
-  compressBtn.disabled = true;
+  isCompressing = true;
+  updateButtons();
   qualitySlider.disabled = true;
   progressWrap.style.display = 'block';
   progressBar.style.width = '0%';
@@ -298,8 +362,9 @@ compressBtn.addEventListener('click', async () => {
     });
   }
 
-  compressBtn.disabled = false;
+  isCompressing = false;
   qualitySlider.disabled = false;
+  updateButtons();
   setTimeout(() => { progressWrap.style.display = 'none'; }, 500);
 });
 
