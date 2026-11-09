@@ -90,28 +90,80 @@ fileInput.addEventListener('change', () => {
 
 const skippedEl = document.getElementById('skipped');
 
-function reportSkipped(skipped) {
+// A canvas past the browser's limits does not throw: it is created, hands back
+// a context, accepts draw calls and then reads back as empty pixels. Left
+// unchecked that produces a blank image reported as "Done". These caps are the
+// lowest ceilings among current desktop engines, so an image under them should
+// decode anywhere; compressOne() still probes the canvas it actually got, which
+// is what catches the tighter limits on phones.
+const MAX_SIDE = 32767;
+const MAX_PIXELS = 100e6;
+
+// naturalWidth/Height without touching a canvas.
+function probeSize(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    const done = (value) => { URL.revokeObjectURL(url); resolve(value); };
+    img.onload = () => done({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => done(null);
+    img.src = url;
+  });
+}
+
+function fmtPixels(w, h) {
+  return `${w}\u00d7${h}, ${(w * h / 1e6).toFixed(0)} MP`;
+}
+
+function reportSkipped({ wrongType, tooBig, unreadable }) {
   if (!skippedEl) return;
-  if (!skipped.length) {
+  const lines = [];
+  if (wrongType.length) {
+    lines.push(`${wrongType.length} file${wrongType.length === 1 ? '' : 's'} skipped — only JPG and PNG are supported.` +
+      `<br><span class="files">${escapeHtml(wrongType.map(f => f.name).join(', '))}</span>`);
+  }
+  if (tooBig.length) {
+    lines.push(`${tooBig.length} image${tooBig.length === 1 ? '' : 's'} skipped — too large to decode in the browser` +
+      ` (limit ${MAX_SIDE} px per side, ${MAX_PIXELS / 1e6} MP total).` +
+      `<br><span class="files">${escapeHtml(tooBig.map(t => `${t.file.name} (${fmtPixels(t.w, t.h)})`).join(', '))}</span>`);
+  }
+  if (unreadable.length) {
+    lines.push(`${unreadable.length} file${unreadable.length === 1 ? '' : 's'} skipped — could not be read as an image.` +
+      `<br><span class="files">${escapeHtml(unreadable.map(f => f.name).join(', '))}</span>`);
+  }
+  if (!lines.length) {
     skippedEl.classList.remove('show');
     skippedEl.textContent = '';
     return;
   }
-  const names = skipped.map(f => f.name).join(', ');
-  skippedEl.innerHTML =
-    `${skipped.length} file${skipped.length === 1 ? '' : 's'} skipped — only JPG and PNG are supported.` +
-    `<br><span class="files">${escapeHtml(names)}</span>`;
+  skippedEl.innerHTML = lines.join('<br><br>');
   skippedEl.classList.add('show');
 }
 
-function handleFiles(fileList) {
+async function handleFiles(fileList) {
   const all = Array.from(fileList);
-  const valid = all.filter(f => /^image\/(jpeg|png)$/.test(f.type));
+  const wrongType = all.filter(f => !/^image\/(jpeg|png)$/.test(f.type));
+  const candidates = all.filter(f => /^image\/(jpeg|png)$/.test(f.type));
+
+  const sizes = await Promise.all(candidates.map(probeSize));
+  const tooBig = [];
+  const unreadable = [];
+  const accepted = [];
+  candidates.forEach((file, i) => {
+    const size = sizes[i];
+    if (!size || !size.w || !size.h) { unreadable.push(file); return; }
+    if (size.w > MAX_SIDE || size.h > MAX_SIDE || size.w * size.h > MAX_PIXELS) {
+      tooBig.push({ file, ...size });
+      return;
+    }
+    accepted.push(file);
+  });
+
   // Silently dropping files left users counting thumbnails to work out what
   // happened, so say which ones were ignored and why.
-  reportSkipped(all.filter(f => !valid.includes(f)));
-  if (!valid.length) return;
-  valid.forEach(addItem);
+  reportSkipped({ wrongType, tooBig, unreadable });
+  if (!accepted.length) return;
+  accepted.forEach(addItem);
   updateButtons();
   updateEmptyState();
 }
@@ -283,6 +335,19 @@ async function compressOne(item, quality) {
     canvas.width = img.naturalWidth;
     canvas.height = img.naturalHeight;
     const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Could not get a 2D context for this image');
+
+    // Write one opaque pixel at the far corner and read it back. On a canvas
+    // the browser silently refused to back with memory this comes back empty,
+    // which is the only reliable signal before we draw the real image: the
+    // limits differ per engine and device, and nothing above throws.
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(canvas.width - 1, canvas.height - 1, 1, 1);
+    if (ctx.getImageData(canvas.width - 1, canvas.height - 1, 1, 1).data[3] === 0) {
+      throw new Error(`Image too large for this device (${canvas.width}\u00d7${canvas.height})`);
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
     ctx.drawImage(img, 0, 0);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
@@ -311,7 +376,11 @@ async function compressOne(item, quality) {
     item.status = 'error';
     statusEl.textContent = 'Failed';
     statusEl.className = 'status err';
-    track('compress_fail', { error: err?.message || String(err) });
+    // "Failed" on its own is a dead end; say why, since the reason is often
+    // actionable (an image past this device's decoding limits, say).
+    const reason = err?.message || String(err);
+    card.querySelector('.result').innerHTML = `<span class="save low">${escapeHtml(reason)}</span>`;
+    track('compress_fail', { error: reason });
   }
 }
 
