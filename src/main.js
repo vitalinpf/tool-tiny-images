@@ -115,6 +115,12 @@ function fmtPixels(w, h) {
   return `${w}\u00d7${h}, ${(w * h / 1e6).toFixed(0)} MP`;
 }
 
+function clearSkipped() {
+  if (!skippedEl) return;
+  skippedEl.classList.remove('show');
+  skippedEl.textContent = '';
+}
+
 function reportSkipped({ wrongType, tooBig, unreadable }) {
   if (!skippedEl) return;
   const lines = [];
@@ -132,8 +138,7 @@ function reportSkipped({ wrongType, tooBig, unreadable }) {
       `<br><span class="files">${escapeHtml(unreadable.map(f => f.name).join(', '))}</span>`);
   }
   if (!lines.length) {
-    skippedEl.classList.remove('show');
-    skippedEl.textContent = '';
+    clearSkipped();
     return;
   }
   skippedEl.innerHTML = lines.join('<br><br>');
@@ -214,6 +219,7 @@ function removeItem(id) {
   URL.revokeObjectURL(items[idx].originalUrl);
   items[idx].cardEl.remove();
   items.splice(idx, 1);
+  if (items.length === 0) clearSkipped();
   updateButtons();
   updateEmptyState();
   updateSummary();
@@ -223,6 +229,8 @@ clearBtn.addEventListener('click', () => {
   items.forEach(i => URL.revokeObjectURL(i.originalUrl));
   items = [];
   grid.innerHTML = '';
+  // The notice describes the drop that is being cleared away, so it goes too.
+  clearSkipped();
   updateButtons();
   updateEmptyState();
   summary.style.display = 'none';
